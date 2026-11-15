@@ -27,4 +27,7 @@ private:
     double ParseUnary();
     double ParsePower();
     double ParsePrimary();
+    double ParseParentheses();
+    double ParseNumber();
+    double ParseFunctionCall();
 };

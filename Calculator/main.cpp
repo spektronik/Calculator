@@ -5,7 +5,7 @@
 #include "Parser.h"
 #include "Exceptions.h"
 
-int main(int argc, char** argv) {
+int main() {
 #ifdef _WIN32
     SetConsoleOutputCP(CP_UTF8);
     SetConsoleCP(CP_UTF8);

@@ -39,8 +39,7 @@ size_t PluginManager::LoadFromDirectory(const std::string& dir) {
             continue;
         }
 
-        auto fn = reinterpret_cast<CreatePluginFn>(
-            reinterpret_cast<void*>(GetProcAddress(h, "CreatePlugin")));
+        auto fn = reinterpret_cast<CreatePluginFn>(GetProcAddress(h, "CreatePlugin"));
         if (!fn) {
             std::cerr << "[plugins] " << path
                 << " has no CreatePlugin export\n";

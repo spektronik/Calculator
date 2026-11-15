@@ -8,8 +8,12 @@
 #define PLUGIN_EXPORT extern "C" __attribute__((visibility("default")))
 #endif
 
-struct PluginError {
-    const char* message;
+class PluginError : public std::exception {
+private:
+    std::string msg_;
+public:
+    explicit PluginError(const std::string& msg) : msg_(msg) {}
+    const char* what() const noexcept override { return msg_.c_str(); }
 };
 
 class IPlugin {

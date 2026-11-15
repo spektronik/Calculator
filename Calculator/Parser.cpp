@@ -69,7 +69,7 @@ double Parser::ParsePower() {
             return p->Call({ base, exp });
         }
         catch (const PluginError& e) {
-            throw CalcError(std::string("plugin error in deg: ") + e.message);
+            throw CalcError(std::string("plugin error in deg: ") + e.what());
         }
     }
     return base;
@@ -78,51 +78,68 @@ double Parser::ParsePower() {
 double Parser::ParsePrimary() {
     char c = Peek();
 
-    if (c == '(') {
-        Get();
-        double v = ParseExpression();
-        Expect(')');
-        return v;
-    }
-
-    if (std::isdigit((unsigned char)c) || c == '.') {
-        size_t start = pos_;
-        while (pos_ < src_.size() &&
-            (std::isdigit((unsigned char)src_[pos_]) || src_[pos_] == '.')) ++pos_;
-        try { return std::stod(src_.substr(start, pos_ - start)); }
-        catch (...) { throw CalcError("bad number"); }
-    }
-
-    if (std::isalpha((unsigned char)c) || c == '_') {
-        size_t start = pos_;
-        while (pos_ < src_.size() &&
-            (std::isalnum((unsigned char)src_[pos_]) || src_[pos_] == '_')) ++pos_;
-        std::string name = src_.substr(start, pos_ - start);
-        Expect('(');
-        std::vector<double> args;
-        if (Peek() != ')') {
-            args.push_back(ParseExpression());
-            while (Peek() == ',') { Get(); args.push_back(ParseExpression()); }
-        }
-        Expect(')');
-
-        IPlugin* p = resolver_ ? resolver_(name) : nullptr;
-        if (!p) throw CalcError("unknown function: " + name);
-        if ((int)args.size() != p->Arity())
-            throw CalcError("wrong arity for " + name);
-        try {
-            return p->Call(args);
-        }
-        catch (const PluginError& e) {
-            throw CalcError(std::string("plugin error in ") + name + ": " + (e.message ? e.message : ""));
-        }
-        catch (const std::exception& e) {
-            throw CalcError(std::string("plugin exception in ") + name + ": " + e.what());
-        }
-        catch (...) {
-            throw CalcError("plugin threw unknown exception in " + name);
-        }
-    }
+    if (c == '(') return ParseParentheses();
+    if (std::isdigit((unsigned char)c) || c == '.') return ParseNumber();
+    if (std::isalpha((unsigned char)c) || c == '_') return ParseFunctionCall();
 
     throw CalcError("unexpected symbol");
+}
+
+double Parser::ParseParentheses() {
+    Get();
+    double v = ParseExpression();
+    Expect(')');
+    return v;
+}
+
+double Parser::ParseNumber() {
+    size_t start = pos_;
+    while (pos_ < src_.size() &&
+        (std::isdigit((unsigned char)src_[pos_]) || src_[pos_] == '.')) {
+        ++pos_;
+    }
+    try {
+        return std::stod(src_.substr(start, pos_ - start));
+    }
+    catch (...) {
+        throw CalcError("bad number");
+    }
+}
+
+double Parser::ParseFunctionCall() {
+    size_t start = pos_;
+    while (pos_ < src_.size() &&
+        (std::isalnum((unsigned char)src_[pos_]) || src_[pos_] == '_')) {
+        ++pos_;
+    }
+    std::string name = src_.substr(start, pos_ - start);
+
+    Expect('(');
+    std::vector<double> args;
+    if (Peek() != ')') {
+        args.push_back(ParseExpression());
+        while (Peek() == ',') {
+            Get();
+            args.push_back(ParseExpression());
+        }
+    }
+    Expect(')');
+
+    IPlugin* p = resolver_ ? resolver_(name) : nullptr;
+    if (!p) throw CalcError("unknown function: " + name);
+    if ((int)args.size() != p->Arity())
+        throw CalcError("wrong arity for " + name);
+
+    try {
+        return p->Call(args);
+    }
+    catch (const PluginError& e) {
+        throw CalcError(std::string("plugin error in ") + name + ": " + e.what());
+    }
+    catch (const std::exception& e) {
+        throw CalcError(std::string("plugin exception in ") + name + ": " + e.what());
+    }
+    catch (...) {
+        throw CalcError("plugin threw unknown exception in " + name);
+    }
 }
